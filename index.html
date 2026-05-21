@@ -1,0 +1,102 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#0F2034" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="Gastos JC" />
+  <title>Jaccobson Capital · Registro de gastos</title>
+  <link rel="manifest" href="manifest.webmanifest" />
+  <link rel="apple-touch-icon" href="icons/icon-192.svg" />
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <header class="app-header">
+    <div>
+      <p class="eyebrow">Jaccobson Capital</p>
+      <h1>Registro fiscal de gastos</h1>
+      <p class="sub">Captura tickets, extrae datos, archiva justificantes en Google Drive y registra gastos en Google Sheets.</p>
+    </div>
+    <button id="installBtn" class="ghost hidden">Instalar</button>
+  </header>
+
+  <main>
+    <section class="card capture-card">
+      <h2>1. Captura del ticket</h2>
+      <p>Usa la cámara del iPhone o selecciona una imagen. Se admite HEIC/HEIF, JPEG y PNG.</p>
+      <label class="file-cta">
+        <input id="photoInput" type="file" accept="image/*,.heic,.heif" capture="environment" />
+        Hacer foto o seleccionar ticket
+      </label>
+      <div id="previewWrap" class="preview-wrap hidden">
+        <img id="preview" alt="Vista previa del ticket" />
+        <div class="meta-grid">
+          <span>Archivo original</span><strong id="originalName">—</strong>
+          <span>Tipo</span><strong id="originalType">—</strong>
+          <span>Tamaño original</span><strong id="originalSize">—</strong>
+          <span>Tamaño procesado</span><strong id="processedSize">—</strong>
+        </div>
+      </div>
+      <div class="actions">
+        <button id="ocrBtn" disabled>Leer ticket</button>
+        <button id="clearBtn" class="ghost" disabled>Limpiar</button>
+      </div>
+      <progress id="progress" max="100" value="0" class="hidden"></progress>
+      <p id="status" class="status"></p>
+    </section>
+
+    <section class="card">
+      <h2>2. Datos fiscales extraídos</h2>
+      <div class="form-grid">
+        <label>Fecha gasto<input id="fecha" type="date" /></label>
+        <label>Proveedor<input id="proveedor" type="text" placeholder="Nombre del establecimiento" /></label>
+        <label>NIF/CIF proveedor<input id="nif" type="text" placeholder="No visible" /></label>
+        <label>Categoría<select id="categoria"></select></label>
+        <label>Base imponible (€)<input id="base" type="number" step="0.01" /></label>
+        <label>IVA %<select id="ivaTipo"><option>0</option><option>4</option><option>10</option><option selected>21</option></select></label>
+        <label>Cuota IVA (€)<input id="ivaCuota" type="number" step="0.01" /></label>
+        <label>Total (€)<input id="total" type="number" step="0.01" /></label>
+        <label>Últimos 4 dígitos tarjeta<input id="tarjeta" inputmode="numeric" maxlength="4" placeholder="Opcional" /></label>
+        <label>Motivo profesional<input id="motivo" type="text" placeholder="Reunión, desplazamiento, proyecto..." /></label>
+        <label>Proyecto/cliente<input id="proyecto" type="text" placeholder="Opcional" /></label>
+        <label>Estado fiscal<select id="estadoFiscal"></select></label>
+      </div>
+      <label class="full">Texto OCR<textarea id="ocrText" rows="8" placeholder="Aquí aparecerá el texto leído del ticket"></textarea></label>
+      <label class="full">Observaciones<textarea id="observaciones" rows="3" placeholder="Alertas, datos no visibles o necesidad de factura completa"></textarea></label>
+      <div class="actions">
+        <button id="saveBtn">Añadir gasto</button>
+        <button id="recalcBtn" class="ghost">Recalcular IVA</button>
+      </div>
+    </section>
+
+    <section class="card">
+      <div class="section-head">
+        <div><h2>3. Libro de gastos</h2><p>Los datos se guardan localmente y, si Vercel está configurado, se sincronizan con Google Drive y Google Sheets.</p></div>
+        <div class="actions compact">
+          <button id="exportBtn">Exportar Excel</button>
+          <button id="exportZipBtn" class="ghost">Exportar ZIP</button>
+          <button id="syncPendingBtn" class="ghost">Sincronizar pendientes</button>
+          <button id="wipeBtn" class="danger">Borrar todo</button>
+        </div>
+      </div>
+      <div class="table-wrap">
+        <table id="expensesTable">
+          <thead><tr></tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </section>
+  </main>
+
+  <footer>PWA · Al guardar, los tickets se archivan en Google Drive y el registro se añade a Google Sheets si el backend de Vercel está configurado.</footer>
+
+  <script src="https://cdn.jsdelivr.net/npm/heic2any@0.0.4/dist/heic2any.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/browser-image-compression@2.0.2/dist/browser-image-compression.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
