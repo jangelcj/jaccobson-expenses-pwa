@@ -66,8 +66,10 @@
       <label class="full">Texto OCR<textarea id="ocrText" rows="8" placeholder="Aquí aparecerá el texto leído del ticket"></textarea></label>
       <label class="full">Observaciones<textarea id="observaciones" rows="3" placeholder="Alertas, datos no visibles o necesidad de factura completa"></textarea></label>
       <div class="actions">
-        <button id="saveBtn">Añadir gasto</button>
-        <button id="recalcBtn" class="ghost">Recalcular IVA</button>
+        <div class="save-bar">
+          <button id="saveBtn">Guardar y sincronizar</button>
+          <button id="recalcBtn" class="ghost">Recalcular IVA</button>
+        </div>
       </div>
     </section>
 
@@ -78,9 +80,12 @@
           <button id="exportBtn">Exportar Excel</button>
           <button id="exportZipBtn" class="ghost">Exportar ZIP</button>
           <button id="syncPendingBtn" class="ghost">Sincronizar pendientes</button>
+          <button id="testGoogleBtn" class="ghost">Probar Google</button>
           <button id="wipeBtn" class="danger">Borrar todo</button>
         </div>
       </div>
+      <div id="syncDiag" class="sync-panel hidden"><strong>Diagnóstico</strong><br><code id="syncDiagText"></code></div>
+      <div id="mobileExpenseList" class="mobile-expense-list"></div>
       <div class="table-wrap">
         <table id="expensesTable">
           <thead><tr></tr></thead>

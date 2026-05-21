@@ -1,90 +1,53 @@
-# Jaccobson Capital · Registro fiscal de gastos
+# Jaccobson Capital · PWA de gastos con Google Drive y Google Sheets
 
-Aplicación web progresiva (PWA) para iPhone orientada a capturar tickets, comprimir/convertir imágenes HEIC/HEIF, leer texto por OCR, registrar datos fiscales, archivar justificantes en Google Drive y añadir cada gasto a una hoja de cálculo de Google Sheets.
+Versión corregida para iPhone y Vercel.
 
-## Arquitectura
+## Cambios principales
 
-- **Frontend PWA**: `index.html`, `app.js`, `styles.css`, `manifest.webmanifest`, `sw.js`.
-- **Backend Vercel Serverless**: `api/google-expense.js`.
-- **Google Drive**: carpeta destino para tickets renombrados.
-- **Google Sheets**: hoja maestra de gastos.
+- Interfaz responsive para iPhone: formularios a una columna, tabla sustituida por tarjetas en móvil y botones táctiles.
+- Compresión más agresiva de fotografías HEIC/JPEG antes de OCR y subida.
+- Endpoint estable `/api/google-expense`.
+- Botón **Probar Google** para diagnosticar variables de Vercel, acceso a carpeta Drive y acceso a Google Sheets.
+- Muestra el error real de sincronización en pantalla y en la columna **Último error**.
 
-La integración con Google se ejecuta en el backend de Vercel para no exponer credenciales en el navegador del iPhone.
-
-## Uso rápido en iPhone
-
-1. Despliega el proyecto en Vercel.
-2. Abre la URL HTTPS desde Safari.
-3. Usa “Compartir” → “Añadir a pantalla de inicio”.
-4. Captura el ticket con “Hacer foto o seleccionar ticket”.
-5. Pulsa “Leer ticket”, revisa los campos y guarda.
-6. Al guardar, la app intenta subir el ticket a Google Drive y añadir la fila a Google Sheets.
-7. Si falla la conexión, el gasto queda localmente como pendiente y puede reintentarse con “Sincronizar pendientes”.
-
-## Configuración de Google
-
-### 1. Crear carpeta en Google Drive
-
-Crea una carpeta, por ejemplo:
-
-`Jaccobson Capital/Gastos/Tickets`
-
-Copia el ID de carpeta desde la URL de Google Drive.
-
-### 2. Crear hoja de cálculo
-
-Crea una hoja de cálculo, por ejemplo:
-
-`Jaccobson Capital - Libro de gastos`
-
-Crea una pestaña llamada `Gastos` y añade esta cabecera en la fila 1:
-
-```csv
-ID,Fecha gasto,Fecha registro,Proveedor,NIF proveedor,Categoría,Descripción,Base imponible,IVA %,Cuota IVA,Total,Forma pago,Tarjeta últimos 4,Deducible IVA,Deducible gasto,Motivo profesional,Proyecto/cliente,Nombre archivo,Ruta archivo,Estado fiscal,Confianza OCR,Observaciones,Drive File ID,Drive Web URL
-```
-
-Copia el ID de la hoja desde la URL de Google Sheets.
-
-### 3. Crear service account
-
-En Google Cloud:
-
-1. Crea o usa un proyecto.
-2. Activa Google Drive API y Google Sheets API.
-3. Crea una Service Account.
-4. Genera una clave JSON.
-5. Copia el email de la service account.
-6. Comparte la carpeta de Drive y la hoja de cálculo con ese email como editor.
-
-### 4. Variables de entorno en Vercel
-
-Configura estas variables:
+## Variables necesarias en Vercel
 
 ```env
 GOOGLE_SERVICE_ACCOUNT_EMAIL=tu-service-account@tu-proyecto.iam.gserviceaccount.com
 GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY="-----BEGIN PRIVATE KEY-----\n...\n-----END PRIVATE KEY-----\n"
-GOOGLE_DRIVE_FOLDER_ID=id_de_la_carpeta_de_google_drive
-GOOGLE_SHEETS_SPREADSHEET_ID=id_de_la_hoja_de_calculo
+GOOGLE_DRIVE_FOLDER_ID=id_de_la_carpeta_drive
+GOOGLE_SHEETS_SPREADSHEET_ID=id_del_google_sheets
 GOOGLE_SHEETS_TAB_NAME=Gastos
 ```
 
-El fichero `.env.example` incluye la plantilla.
+## Permisos imprescindibles
 
-## Desarrollo local
+Comparte con el email de la Service Account, como Editor:
 
-```bash
-npm install
-cp .env.example .env.local
-npx vercel dev
-```
+1. La carpeta de Google Drive donde se guardarán los tickets.
+2. El fichero de Google Sheets donde se registrarán las filas.
 
-## Límites y recomendaciones
+Además, en Google Cloud deben estar habilitadas:
 
-- La imagen se convierte/comprime antes de subirse para reducir tamaño y mejorar compatibilidad con iPhone.
-- La función serverless recibe la imagen en base64; para volúmenes muy altos conviene migrar a carga directa/resumable upload.
-- El OCR local es una primera capa funcional, pero no equivale a validación fiscal definitiva.
-- Para producción conviene añadir autenticación, control de usuarios y una política de retención documental.
+- Google Drive API.
+- Google Sheets API.
 
-## Campos del registro
+## Diagnóstico
 
-ID, fecha, proveedor, NIF, categoría, base imponible, IVA, total, pago por tarjeta, últimos 4 dígitos, deducibilidad, motivo profesional, proyecto, nombre del archivo, URL de Drive y observaciones fiscales.
+En la app pulsa **Probar Google**. Si todo está bien, devolverá:
+
+- Email de la Service Account.
+- Nombre e ID de la carpeta Drive.
+- Nombre del Google Sheets.
+- Pestañas detectadas.
+- Confirmación de que existe la pestaña configurada, por defecto `Gastos`.
+
+Si falla, el mensaje aparecerá en la pantalla y en el panel de diagnóstico.
+
+## Despliegue
+
+1. Sustituye los archivos del repositorio por esta versión.
+2. Haz commit y push a GitHub.
+3. Vercel redeplegará automáticamente.
+4. En iPhone, abre la URL, fuerza recarga y prueba primero **Probar Google**.
+
