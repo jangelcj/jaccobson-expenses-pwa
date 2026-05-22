@@ -10,51 +10,54 @@ function env(name) {
   if (!value) throw new Error(`Falta variable de entorno en Vercel: ${name}`);
   return value;
 }
-function getPrivateKey() {
-  const raw = env('GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY').trim();
-  return raw.replace(/\\n/g, '\n');
+
+function getOAuthClient() {
+  const client = new google.auth.OAuth2(
+    env('GOOGLE_CLIENT_ID'),
+    env('GOOGLE_CLIENT_SECRET'),
+    env('GOOGLE_OAUTH_REDIRECT_URI')
+  );
+  client.setCredentials({ refresh_token: env('GOOGLE_REFRESH_TOKEN') });
+  return client;
 }
-function getAuth() {
-  return new google.auth.JWT({
-    email: env('GOOGLE_SERVICE_ACCOUNT_EMAIL'),
-    key: getPrivateKey(),
-    scopes: [
-      'https://www.googleapis.com/auth/drive',
-      'https://www.googleapis.com/auth/spreadsheets'
-    ]
-  });
-}
+
 function decodeDataUrl(dataUrl) {
   const match = String(dataUrl || '').match(/^data:(.+);base64,(.+)$/);
   if (!match) throw new Error('Imagen inválida: no llega como data URL base64');
   return { mimeType: match[1], buffer: Buffer.from(match[2], 'base64') };
 }
+
 function asRow(expense, driveUrl, driveFileId) {
   const row = { ...expense, 'Ruta archivo': driveUrl, 'Drive File ID': driveFileId, 'Drive Web URL': driveUrl };
   return COLUMNS.map((column) => row[column] ?? '');
 }
+
 function httpError(error) {
   const g = error && error.errors && error.errors[0] ? error.errors[0].message : '';
   const msg = [error.message, g].filter(Boolean).join(' | ');
   return msg || 'Error desconocido';
 }
+
 async function diagnostics(res) {
-  const auth = getAuth();
+  const auth = getOAuthClient();
   const drive = google.drive({ version: 'v3', auth });
   const sheets = google.sheets({ version: 'v4', auth });
   const folderId = env('GOOGLE_DRIVE_FOLDER_ID');
   const spreadsheetId = env('GOOGLE_SHEETS_SPREADSHEET_ID');
   const sheetName = process.env.GOOGLE_SHEETS_TAB_NAME || 'Gastos';
 
-  const [folder, spreadsheet] = await Promise.all([
-    drive.files.get({ fileId: folderId, fields: 'id,name,mimeType,capabilities/canAddChildren' }),
+  const [about, folder, spreadsheet] = await Promise.all([
+    drive.about.get({ fields: 'user,storageQuota' }),
+    drive.files.get({ fileId: folderId, fields: 'id,name,mimeType,capabilities/canAddChildren', supportsAllDrives: true }),
     sheets.spreadsheets.get({ spreadsheetId, fields: 'spreadsheetId,properties/title,sheets/properties/title' })
   ]);
   const tabs = spreadsheet.data.sheets.map(s => s.properties.title);
   const hasTab = tabs.includes(sheetName);
   return res.status(200).json({
     ok: true,
-    serviceAccount: env('GOOGLE_SERVICE_ACCOUNT_EMAIL'),
+    authMode: 'OAuth usuario Google personal',
+    googleUser: about.data.user || null,
+    storageQuota: about.data.storageQuota || null,
     folder: folder.data,
     spreadsheet: { id: spreadsheet.data.spreadsheetId, title: spreadsheet.data.properties.title, tabs, expectedTab: sheetName, hasTab },
     notes: hasTab ? 'Configuración básica correcta.' : `La pestaña ${sheetName} no existe en el Google Sheets.`
@@ -80,7 +83,7 @@ module.exports = async function handler(req, res) {
     if (!expense || !expense.ID) throw new Error('Falta el payload del gasto');
     if (!imageDataUrl) throw new Error('Falta la imagen del ticket');
 
-    const auth = getAuth();
+    const auth = getOAuthClient();
     const drive = google.drive({ version: 'v3', auth });
     const sheets = google.sheets({ version: 'v4', auth });
     const { mimeType, buffer } = decodeDataUrl(imageDataUrl);
@@ -95,7 +98,8 @@ module.exports = async function handler(req, res) {
     const created = await drive.files.create({
       requestBody: { name: fileName, parents: [folderId], mimeType },
       media: { mimeType, body: Readable.from(buffer) },
-      fields: 'id, webViewLink'
+      fields: 'id, webViewLink',
+      supportsAllDrives: true
     });
 
     const driveFileId = created.data.id;

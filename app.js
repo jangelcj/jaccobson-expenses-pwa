@@ -27,6 +27,7 @@ function bind(){
   $('exportZipBtn').addEventListener('click', exportZip);
   $('syncPendingBtn').addEventListener('click', syncPending);
   $('testGoogleBtn').addEventListener('click', testGoogle);
+  $('connectGoogleBtn').addEventListener('click', ()=>{ window.location.href='/api/google-oauth-start'; });
   $('wipeBtn').addEventListener('click', wipeAll);
   ['base','ivaTipo','total'].forEach(id=>$(id).addEventListener('change',recalcVat));
   window.addEventListener('beforeinstallprompt',e=>{ e.preventDefault(); installPrompt=e; $('installBtn').classList.remove('hidden'); });
