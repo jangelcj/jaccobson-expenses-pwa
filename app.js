@@ -1,6 +1,6 @@
 const $ = (id) => document.getElementById(id);
-const STORAGE_KEY = 'jc_expenses_v4';
-const LEGACY_KEYS = ['jc_expenses_v3', 'jc_expenses_v2', 'jc_expenses_v1'];
+const STORAGE_KEY = 'jc_expenses_v5';
+const LEGACY_KEYS = ['jc_expenses_v4', 'jc_expenses_v3', 'jc_expenses_v2', 'jc_expenses_v1'];
 const IMG_KEY_PREFIX = 'jc_ticket_';
 const CATEGORIES = ['Restaurante / comidas','Taxi / VTC','Parking','Peajes','Alojamiento','Viajes','Combustible','Material oficina','Software / SaaS','Formación','Servicios profesionales','Representación comercial','Otros','Revisar'];
 const ESTADOS = ['Factura completa','Factura simplificada deducible','Ticket/factura simplificada no deducible IVA','Pendiente de revisión'];
@@ -36,6 +36,7 @@ function bind(){
   $('drawerBackdrop').addEventListener('click', closeDrawer);
   $('saveBtn').addEventListener('click', saveExpense);
   $('recalcBtn').addEventListener('click', recalcVatFromTotal);
+  bindWarningClearance();
   $('exportBtn').addEventListener('click', () => { closeDrawer(); exportExcel(); });
   $('exportZipBtn').addEventListener('click', () => { closeDrawer(); exportZip(); });
   $('syncPendingBtn').addEventListener('click', () => { closeDrawer(); syncPending(); });
@@ -52,6 +53,45 @@ function bind(){
   $('installBtn').addEventListener('click', async () => {
     if (installPrompt) { installPrompt.prompt(); installPrompt = null; $('installBtn').classList.add('hidden'); }
   });
+}
+
+
+function bindWarningClearance(){
+  document.querySelectorAll('[data-field]').forEach(field => {
+    const input = field.querySelector('input, select, textarea');
+    if (!input) return;
+    const handler = () => clearWarningIfComplete(field.dataset.field);
+    input.addEventListener('blur', handler);
+    input.addEventListener('change', handler);
+  });
+}
+
+function isFieldComplete(id){
+  const el = $(id);
+  if (!el) return false;
+  const value = String(el.value || '').trim();
+  if (!value) return false;
+  if (id === 'categoria' && value === 'Revisar') return false;
+  return true;
+}
+
+function clearWarningIfComplete(id){
+  if (!isFieldComplete(id)) return;
+  const field = document.querySelector(`[data-field="${id}"]`);
+  if (field) {
+    field.classList.remove('needs-review');
+    field.querySelectorAll('.warn-icon').forEach(el => el.remove());
+  }
+  lastAutoFillWarnings = lastAutoFillWarnings.filter(w => w.field !== id);
+  renderWarnings();
+}
+
+function showSaveFeedback(message, type='ok'){
+  const el = $('saveFeedback');
+  if (!el) return;
+  el.textContent = message || '';
+  el.className = `save-feedback ${type}`;
+  el.classList.toggle('hidden', !message);
 }
 
 function openSourceSheet(){ $('sourceSheet').classList.remove('hidden'); }
@@ -245,6 +285,7 @@ function clearWarnings(){
   document.querySelectorAll('.warn-icon').forEach(el => el.remove());
   $('fieldWarnings').classList.add('hidden');
   $('fieldWarnings').innerHTML = '';
+  showSaveFeedback('', 'ok');
 }
 
 function renderWarnings(){
@@ -306,7 +347,7 @@ async function saveExpense(){
   const row = {
     ID:id,
     'Fecha gasto':fecha,
-    'Fecha registro':new Date().toISOString().slice(0,10),
+    'Fecha registro':new Date().toISOString(),
     Proveedor:$('proveedor').value || 'No visible',
     'NIF proveedor':$('nif').value || 'No visible',
     Categoría:$('categoria').value,
@@ -333,12 +374,13 @@ async function saveExpense(){
   rows.push(row);
   saveExpenses(rows);
   renderTable();
+  showSaveFeedback(`Gasto ${id} guardado. Sincronizando con Google...`, 'info');
   setStatus(`Gasto ${id} guardado localmente. Sincronizando con Google...`);
   await syncExpense(id);
 }
 
 function renderTable(){
-  const rows = loadExpenses();
+  const rows = loadExpenses().slice().sort((a,b) => getRecordTimestamp(b) - getRecordTimestamp(a));
   const thead = $('expensesTable').querySelector('thead tr');
   const tbody = $('expensesTable').querySelector('tbody');
   const mobile = $('mobileExpenseList');
@@ -349,11 +391,35 @@ function renderTable(){
     COLUMNS.forEach(c => { const td = document.createElement('td'); fillCell(td, r, c); tr.appendChild(td); });
     tbody.appendChild(tr);
     const card = document.createElement('article'); card.className = 'expense-card';
-    const h = document.createElement('h3'); h.textContent = `${r['Fecha gasto'] || ''} · ${r.Proveedor || 'Proveedor no visible'} · ${Number(r.Total || 0).toFixed(2)} €`; card.appendChild(h);
+    const h = document.createElement('h3');
+    const stamp = formatRecordDateTime(r);
+    h.textContent = `${stamp} · ${r.Proveedor || 'Proveedor no visible'} · ${Number(r.Total || 0).toFixed(2)} €`;
+    card.appendChild(h);
     const dl = document.createElement('dl');
     ['Categoría','Estado fiscal','Forma pago','Sincronización','Último error','Nombre archivo','Drive Web URL'].forEach(c => { const dt = document.createElement('dt'); dt.textContent = c; const dd = document.createElement('dd'); fillCell(dd, r, c); dl.append(dt, dd); });
     card.appendChild(dl); mobile.appendChild(card);
   });
+}
+
+function getRecordTimestamp(r){
+  const raw = r['Fecha registro'];
+  const parsed = raw ? Date.parse(raw) : NaN;
+  if (!Number.isNaN(parsed)) return parsed;
+  const id = String(r.ID || '').match(/G(\d{14})/);
+  if (id) {
+    const v = id[1];
+    return Date.parse(`${v.slice(0,4)}-${v.slice(4,6)}-${v.slice(6,8)}T${v.slice(8,10)}:${v.slice(10,12)}:${v.slice(12,14)}`);
+  }
+  return 0;
+}
+
+function formatRecordDateTime(r){
+  const ts = getRecordTimestamp(r);
+  const gasto = r['Fecha gasto'] || '';
+  if (!ts) return gasto;
+  const d = new Date(ts);
+  const time = d.toLocaleTimeString('es-ES', { hour:'2-digit', minute:'2-digit' });
+  return `${gasto} · ${time}`;
 }
 
 function fillCell(el, r, c){
@@ -391,6 +457,7 @@ async function syncExpense(id){
       row['Sincronización'] = 'Sincronizado';
       row['Último error'] = '';
       saveExpenses(rows); renderTable();
+      showSaveFeedback(`Gasto ${id} guardado correctamente en Google Drive y Google Sheets.`, 'ok');
       setStatus(`Gasto ${id} sincronizado con Google Drive y Google Sheets.`, 'ok');
       return;
     }
@@ -398,11 +465,13 @@ async function syncExpense(id){
     row['Último error'] = data.sheetsError || data.error || 'La imagen subió, pero no se añadió la fila a Google Sheets.';
     saveExpenses(rows); renderTable();
     showDiag({ id, title:'Google Sheets pendiente', userMessage:'La imagen se ha subido a Drive, pero la fila no se ha añadido a Google Sheets.', error:row['Último error'], endpoint:GOOGLE_SYNC_ENDPOINT, response:data }, 'error');
+    showSaveFeedback(`Imagen subida, pero el registro queda pendiente de Google Sheets.`, 'error');
     setStatus(`La imagen se ha subido, pero la fila de Google Sheets queda pendiente: ${row['Último error']}`, 'error');
   }catch(err){
     console.error(err);
     row['Sincronización'] = 'Pendiente'; row['Último error'] = err.message;
     saveExpenses(rows); renderTable();
+    showSaveFeedback(`Gasto guardado en este dispositivo, pero pendiente de sincronización.`, 'error');
     setStatus(`No se ha sincronizado con Google: ${err.message}`, 'error');
     showDiag({ id, title:'Sincronización pendiente', userMessage:'El gasto se ha guardado en este dispositivo, pero no se ha podido completar la sincronización. Revisa el detalle técnico o ejecuta Sincronizar pendientes desde Administración.', error:err.message, endpoint:GOOGLE_SYNC_ENDPOINT }, 'error');
   }
