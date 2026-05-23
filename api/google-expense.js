@@ -1,8 +1,9 @@
 const { google } = require('googleapis');
 const { Readable } = require('stream');
+const crypto = require('crypto');
 
 const COLUMNS = [
-  'ID','Fecha gasto','Fecha registro','Proveedor','NIF proveedor','Categoría','Descripción','Base imponible','IVA %','Cuota IVA','Total','Forma pago','Deducible IVA','Deducible gasto','Motivo profesional','Proyecto/cliente','Nombre archivo','Ruta archivo','Estado fiscal','Confianza OCR','Observaciones','Drive File ID','Drive Web URL'
+  'ID','Fecha gasto','Fecha registro','Proveedor','NIF proveedor','Categoría','Descripción','Base imponible','IVA %','Cuota IVA','Total','Forma pago','Deducible IVA','Deducible gasto','Motivo profesional','Proyecto/cliente','Nombre archivo','Ruta archivo','Estado fiscal','Confianza OCR','Observaciones','Drive File ID','Drive Web URL','Ticket Hash SHA-256','Confianza IA','Tipo documento','Riesgo fiscal','Acción recomendada'
 ];
 
 function env(name) {
@@ -23,8 +24,9 @@ function decodeDataUrl(dataUrl) {
   return { mimeType: match[1], buffer: Buffer.from(match[2], 'base64') };
 }
 
-function asRow(expense, driveUrl, driveFileId) {
+function asRow(expense, driveUrl, driveFileId, verifiedHash) {
   const row = { ...expense, 'Ruta archivo': driveUrl, 'Drive File ID': driveFileId, 'Drive Web URL': driveUrl };
+  if (verifiedHash) row['Ticket Hash SHA-256'] = verifiedHash;
   return COLUMNS.map((column) => row[column] ?? '');
 }
 
@@ -34,18 +36,26 @@ function httpError(error) {
   return [primary, nested].filter(Boolean).join(' | ') || 'Error desconocido';
 }
 
+function colLetter(n) {
+  let s = '';
+  while (n > 0) { const m = (n - 1) % 26; s = String.fromCharCode(65 + m) + s; n = Math.floor((n - 1) / 26); }
+  return s;
+}
+
 async function ensureHeaderRow(sheets, spreadsheetId, sheetName) {
   const meta = await sheets.spreadsheets.get({ spreadsheetId, fields: 'sheets/properties/title' });
   const tabs = meta.data.sheets.map((s) => s.properties.title);
   if (!tabs.includes(sheetName)) {
     throw new Error(`La pestaña "${sheetName}" no existe en el Google Sheets. Pestañas disponibles: ${tabs.join(', ')}`);
   }
-  const current = await sheets.spreadsheets.values.get({ spreadsheetId, range: `${sheetName}!A1:W1` }).catch(() => null);
+  const range = `${sheetName}!A1:${colLetter(COLUMNS.length)}1`;
+  const current = await sheets.spreadsheets.values.get({ spreadsheetId, range }).catch(() => null);
   const firstRow = current && current.data && current.data.values ? current.data.values[0] : null;
-  if (!firstRow || firstRow.length === 0) {
+  const needsUpdate = !firstRow || COLUMNS.some((c, i) => firstRow[i] !== c);
+  if (needsUpdate) {
     await sheets.spreadsheets.values.update({
       spreadsheetId,
-      range: `${sheetName}!A1:W1`,
+      range,
       valueInputOption: 'USER_ENTERED',
       requestBody: { values: [COLUMNS] }
     });
@@ -85,7 +95,7 @@ async function diagnostics(res) {
     googleUser: about.data.user || null,
     storageQuota: about.data.storageQuota || null,
     folder: folder.data,
-    spreadsheet: { id: spreadsheet.data.spreadsheetId, title: spreadsheet.data.properties.title, tabs, expectedTab: sheetName, hasTab },
+    spreadsheet: { id: spreadsheet.data.spreadsheetId, title: spreadsheet.data.properties.title, tabs, expectedTab: sheetName, hasTab, columns:COLUMNS.length },
     notes: hasTab ? 'Configuración básica correcta. Se puede acceder a Drive y Google Sheets.' : `La pestaña ${sheetName} no existe en el Google Sheets.`
   });
 }
@@ -118,10 +128,14 @@ module.exports = async function handler(req, res) {
 
     let driveFileId = expense['Drive File ID'] || '';
     let driveUrl = expense['Drive Web URL'] || '';
+    let verifiedHash = expense['Ticket Hash SHA-256'] || '';
 
     if (!driveUrl) {
       const { mimeType, buffer } = decodeDataUrl(imageDataUrl);
       if (buffer.length > 2500000) throw new Error(`Imagen demasiado grande tras compresión: ${Math.round(buffer.length / 1024)} KB`);
+      const serverHash = crypto.createHash('sha256').update(buffer).digest('hex');
+      if (verifiedHash && verifiedHash !== serverHash) throw new Error('El hash SHA-256 calculado en servidor no coincide con el hash enviado por la app.');
+      verifiedHash = serverHash;
       const fileName = expense['Nombre archivo'] || `${expense.ID}.jpg`;
       const created = await drive.files.create({
         requestBody: { name: fileName, parents: [folderId], mimeType },
@@ -137,14 +151,14 @@ module.exports = async function handler(req, res) {
     let sheetsResponse = null;
     let sheetsError = '';
     try {
-      sheetsResponse = await appendSheetRow(sheets, spreadsheetId, sheetName, asRow(expense, driveUrl, driveFileId));
+      sheetsResponse = await appendSheetRow(sheets, spreadsheetId, sheetName, asRow(expense, driveUrl, driveFileId, verifiedHash));
       sheetsAppended = true;
     } catch (error) {
       sheetsError = httpError(error);
       console.error('Sheets append failed', error);
     }
 
-    return res.status(sheetsAppended ? 200 : 207).json({ ok: sheetsAppended, driveFileId, driveUrl, sheetsAppended, sheetsError, sheetsResponse });
+    return res.status(sheetsAppended ? 200 : 207).json({ ok: sheetsAppended, driveFileId, driveUrl, ticketHash: verifiedHash, sheetsAppended, sheetsError, sheetsResponse });
   } catch (error) {
     console.error(error);
     return res.status(500).json({ ok: false, error: httpError(error) });

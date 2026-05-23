@@ -61,17 +61,25 @@
       <p>Información de versión desplegada y cambios incluidos.</p>
       <div class="about-card">
         <div class="about-row"><span>Aplicación</span><strong>Jaccobson Capital · Gastos</strong></div>
-        <div class="about-row"><span>Versión</span><strong id="aboutVersion">v7</strong></div>
+        <div class="about-row"><span>Versión</span><strong id="aboutVersion">v8</strong></div>
         <div class="about-row"><span>Fecha</span><strong id="aboutDate">2026-05-23</strong></div>
         <details open>
           <summary>Últimos cambios</summary>
           <ul id="aboutChanges">
-            <li>Menú Ajustes incorpora sección Acerca de.</li>
-            <li>Versión visible para verificar qué despliegue está activo.</li>
-            <li>Resumen de cambios disponible desde la PWA.</li>
-            <li>Se mantiene integración Gemini, Google Drive y Google Sheets.</li>
+            <li>Hash SHA-256 del ticket para robustez documental.</li>
+            <li>Análisis fiscal inteligente de Gemini.</li>
+            <li>Dashboard simple operativo.</li>
+            <li>Exportación para asesoría con Excel, tickets y manifiesto de evidencias.</li>
           </ul>
         </details>
+      </div>
+    </section>
+
+    <section class="drawer-section">
+      <h3>Dashboard</h3>
+      <p>Resumen operativo sencillo de gastos, IVA, pendientes y sincronización.</p>
+      <div class="drawer-actions">
+        <button id="showDashboardBtn" class="ghost">Ver dashboard</button>
       </div>
     </section>
 
@@ -82,6 +90,7 @@
         <button id="syncPendingBtn" class="ghost">Sincronizar pendientes</button>
         <button id="exportBtn" class="ghost">Exportar Excel</button>
         <button id="exportZipBtn" class="ghost">Exportar ZIP tickets</button>
+        <button id="advisorExportBtn" class="ghost">Exportar para asesoría</button>
         <button id="wipeBtn" class="danger">Borrar datos locales</button>
       </div>
     </section>
@@ -154,6 +163,25 @@
             <p id="saveFeedback" class="save-feedback hidden"></p>
           </div>
         </div>
+      </div>
+    </section>
+
+    <section class="card" id="dashboardSection">
+      <div class="section-head simple">
+        <div class="step-pill">D</div>
+        <h2>Dashboard</h2>
+        <p>Resumen simple para seguimiento fiscal y operativo.</p>
+      </div>
+      <div class="dashboard-grid">
+        <div class="metric-card"><span>Gastos registrados</span><strong id="dashCount">0</strong></div>
+        <div class="metric-card"><span>Total gasto</span><strong id="dashTotal">0,00 €</strong></div>
+        <div class="metric-card"><span>IVA soportado</span><strong id="dashVat">0,00 €</strong></div>
+        <div class="metric-card"><span>Pendientes revisión</span><strong id="dashPending">0</strong></div>
+        <div class="metric-card"><span>Sincronización</span><strong id="dashSync">0/0</strong></div>
+      </div>
+      <div class="dashboard-list">
+        <h3>Principales categorías</h3>
+        <ul id="dashCategories"><li><span>Sin datos todavía</span><strong>—</strong></li></ul>
       </div>
     </section>
 

@@ -1,6 +1,6 @@
 {
   "name": "jaccobson-expense-pwa",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "private": true,
   "description": "PWA de registro fiscal de gastos con archivo en Google Drive y Google Sheets vía Vercel.",
   "scripts": {

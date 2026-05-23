@@ -41,7 +41,8 @@ function normalizeTicket(ticket) {
     payment_method: t.payment_method || 'Tarjeta',
     fiscal_status: t.fiscal_status || 'Pendiente de revisión',
     confidence: t.confidence ?? 0,
-    warnings: Array.isArray(t.warnings) ? t.warnings : []
+    warnings: Array.isArray(t.warnings) ? t.warnings : [],
+    fiscal_analysis: t.fiscal_analysis || {}
   };
 }
 
@@ -74,6 +75,10 @@ Reglas:
 - payment_method solo puede ser "Tarjeta" o "Efectivo". Si ves VISA, Mastercard, contactless, datáfono o tarjeta, usa "Tarjeta". Si no está claro, usa "Tarjeta".
 - expense_type debe ser una de estas categorías: Restaurante / comidas, Taxi / VTC, Parking, Peajes, Alojamiento, Viajes, Combustible, Material oficina, Software / SaaS, Formación, Servicios profesionales, Representación comercial, Otros, Revisar.
 - fiscal_status debe ser una de estas opciones: Factura completa, Factura simplificada deducible, Ticket/factura simplificada no deducible IVA, Pendiente de revisión.
+- Añade análisis fiscal práctico para una sociedad española de un solo empleado, sin convertirlo en asesoramiento definitivo.
+- Valora si falta factura completa, NIF/CIF del proveedor, cuota de IVA desglosada, motivo profesional o datos que deban revisarse antes de liquidar IVA.
+- vat_deductible y expense_deductible solo pueden ser "Sí", "No" o "Revisar".
+- risk_level solo puede ser "Bajo", "Medio", "Alto" o "Revisar".
 
 Esquema exacto:
 {
@@ -88,7 +93,17 @@ Esquema exacto:
   "payment_method": "Tarjeta",
   "fiscal_status": "Pendiente de revisión",
   "confidence": 0.0,
-  "warnings": []
+  "warnings": [],
+  "fiscal_analysis": {
+    "document_type": "Factura completa | Factura simplificada | Ticket/recibo | Revisar",
+    "vat_deductible": "Sí | No | Revisar",
+    "vat_deductibility_reason": "",
+    "expense_deductible": "Sí | No | Revisar",
+    "expense_deductibility_reason": "",
+    "risk_level": "Bajo | Medio | Alto | Revisar",
+    "red_flags": [],
+    "recommended_action": ""
+  }
 }`;
 
     const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent?key=${encodeURIComponent(env('GEMINI_API_KEY'))}`, {

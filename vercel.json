@@ -3,6 +3,9 @@
   "functions": {
     "api/google-expense.js": {
       "maxDuration": 30
+    },
+    "api/analyze-ticket.js": {
+      "maxDuration": 30
     }
   },
   "headers": [

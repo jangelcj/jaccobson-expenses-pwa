@@ -31,3 +31,16 @@ main{padding:16px max(14px,env(safe-area-inset-left)) 18px max(14px,env(safe-are
 .about-card summary{cursor:pointer;font-weight:850;color:var(--navy)}
 .about-card ul{margin:10px 0 0 18px;padding:0;color:var(--ink);font-size:14px;line-height:1.45}
 .about-card li{margin:6px 0}
+
+/* UX v8 fiscal dashboard */
+.dashboard-grid{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:10px;margin-top:12px}
+.metric-card{border:1px solid var(--line);border-radius:16px;background:#fff;padding:13px;display:grid;gap:6px;min-width:0}
+.metric-card span{font-size:12px;color:var(--muted);font-weight:800;text-transform:uppercase;letter-spacing:.05em}
+.metric-card strong{font-size:clamp(18px,4vw,26px);color:var(--navy);overflow-wrap:anywhere}
+.dashboard-list{margin-top:14px;border:1px solid var(--line);border-radius:16px;background:#fff;padding:14px}
+.dashboard-list ul{margin:8px 0 0;padding:0;list-style:none;display:grid;gap:8px}
+.dashboard-list li{display:flex;justify-content:space-between;gap:14px;border-bottom:1px solid #EDF0F4;padding-bottom:8px}
+.dashboard-list li:last-child{border-bottom:0;padding-bottom:0}
+.dashboard-list span{color:var(--muted);font-weight:700}.dashboard-list strong{color:var(--navy)}
+@media(max-width:900px){.dashboard-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:420px){.dashboard-grid{grid-template-columns:1fr}}
