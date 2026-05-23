@@ -1,11 +1,12 @@
 const $ = (id) => document.getElementById(id);
-const STORAGE_KEY = 'jc_expenses_v5';
-const LEGACY_KEYS = ['jc_expenses_v4', 'jc_expenses_v3', 'jc_expenses_v2', 'jc_expenses_v1'];
+const STORAGE_KEY = 'jc_expenses_v6';
+const LEGACY_KEYS = ['jc_expenses_v5', 'jc_expenses_v4', 'jc_expenses_v3', 'jc_expenses_v2', 'jc_expenses_v1'];
 const IMG_KEY_PREFIX = 'jc_ticket_';
 const CATEGORIES = ['Restaurante / comidas','Taxi / VTC','Parking','Peajes','Alojamiento','Viajes','Combustible','Material oficina','Software / SaaS','Formación','Servicios profesionales','Representación comercial','Otros','Revisar'];
 const ESTADOS = ['Factura completa','Factura simplificada deducible','Ticket/factura simplificada no deducible IVA','Pendiente de revisión'];
 const COLUMNS = ['ID','Fecha gasto','Fecha registro','Proveedor','NIF proveedor','Categoría','Descripción','Base imponible','IVA %','Cuota IVA','Total','Forma pago','Deducible IVA','Deducible gasto','Motivo profesional','Proyecto/cliente','Nombre archivo','Ruta archivo','Estado fiscal','Confianza OCR','Observaciones','Sincronización','Último error','Drive Web URL'];
 const GOOGLE_SYNC_ENDPOINT = '/api/google-expense';
+const GEMINI_ANALYZE_ENDPOINT = '/api/analyze-ticket';
 let currentBlob = null;
 let currentFile = null;
 let currentDataUrl = null;
@@ -158,8 +159,8 @@ async function handleFile(e){
     $('preview').src = currentDataUrl;
     $('previewWrap').classList.remove('hidden');
     $('clearBtn').disabled = false;
-    setStatus('Imagen preparada. Iniciando lectura automática del ticket...', 'ok');
-    await runOcr();
+    setStatus('Imagen preparada. Analizando ticket con Gemini...', 'ok');
+    await analyzeTicket();
   }catch(err){
     console.error(err);
     setStatus('No he podido procesar la imagen. Prueba a hacer la foto en JPEG o selecciona otra.', 'error');
@@ -169,6 +170,108 @@ async function handleFile(e){
 }
 
 function blobToDataURL(blob){ return new Promise((res, rej) => { const r = new FileReader(); r.onload = () => res(r.result); r.onerror = rej; r.readAsDataURL(blob); }); }
+
+
+async function analyzeTicket(){
+  if (!currentDataUrl) return;
+  $('progress').classList.remove('hidden');
+  $('progress').removeAttribute('value');
+  setStatus('Analizando ticket con Gemini...');
+  try {
+    const res = await fetch(GEMINI_ANALYZE_ENDPOINT, {
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({ imageDataUrl: currentDataUrl })
+    });
+    const data = await safeJson(res);
+    if (!res.ok || !data.ok) throw new Error(data.error || `HTTP ${res.status}`);
+    applyStructuredTicket(data.ticket || {}, data.rawText || '', data.confidence || '');
+    $('progress').classList.add('hidden');
+    setStatus('Ticket analizado con Gemini. Revisa los campos antes de guardar.', 'ok');
+  } catch (err) {
+    console.warn('Gemini analysis failed; falling back to local OCR', err);
+    setStatus('Gemini no ha podido analizar el ticket. Uso OCR local como respaldo...', 'warn');
+    await runOcr();
+  }
+}
+
+function applyStructuredTicket(ticket, rawText, confidence){
+  clearWarnings();
+  const conf = Math.round(Number(ticket.confidence ?? confidence ?? 0) * (Number(ticket.confidence ?? confidence ?? 0) <= 1 ? 100 : 1));
+  $('ocrText').value = rawText || ticket.raw_text || '';
+
+  setField('fecha', normalizeDateValue(ticket.date), 'No he identificado la fecha del gasto.');
+  setField('proveedor', ticket.supplier || '', 'No he identificado con seguridad el proveedor.');
+  setField('nif', ticket.supplier_tax_id || '', 'No he identificado NIF/CIF del proveedor.');
+
+  const category = normalizeCategory(ticket.expense_type || ticket.category || '');
+  $('categoria').value = category;
+  if (category === 'Revisar') markWarning('categoria', 'No he podido clasificar el tipo de gasto con seguridad.');
+
+  const vatPercent = normalizeNumber(ticket.vat_percent);
+  if (vatPercent !== null) $('ivaTipo').value = String([0,4,10,21].includes(vatPercent) ? vatPercent : 21);
+  else markWarning('ivaTipo', 'No he identificado el porcentaje de IVA. Se mantiene el valor por defecto.');
+
+  const base = normalizeNumber(ticket.taxable_base ?? ticket.subtotal ?? ticket.base);
+  const vat = normalizeNumber(ticket.vat_amount ?? ticket.iva_amount);
+  const total = normalizeNumber(ticket.total);
+  if (base !== null) setField('base', base.toFixed(2), ''); else markWarning('base', 'No he identificado la base imponible. Puedes recalcularla desde el total.');
+  if (vat !== null) setField('ivaCuota', vat.toFixed(2), ''); else markWarning('ivaCuota', 'No he identificado la cuota de IVA. Puedes recalcularla desde el total.');
+  if (total !== null) setField('total', total.toFixed(2), ''); else markWarning('total', 'No he identificado el importe total.');
+  if ((base === null || vat === null) && total !== null) recalcVatFromTotal();
+
+  $('formaPago').value = normalizePaymentMethod(ticket.payment_method || 'Tarjeta');
+  if (ticket.fiscal_status) {
+    const state = ESTADOS.find(x => x.toLowerCase() === String(ticket.fiscal_status).toLowerCase()) || ESTADOS.find(x => String(ticket.fiscal_status).toLowerCase().includes(x.toLowerCase().slice(0,12)));
+    if (state) $('estadoFiscal').value = state;
+  }
+  const notes = [];
+  notes.push(`Lectura IA Gemini. Confianza aproximada: ${conf || 'N/D'}%.`);
+  if (Array.isArray(ticket.warnings) && ticket.warnings.length) notes.push(`Advertencias: ${ticket.warnings.join(' | ')}`);
+  notes.push('Revisar campos marcados con advertencia y confirmar deducibilidad fiscal antes de liquidar IVA.');
+  $('observaciones').value = notes.join(' ');
+  renderWarnings();
+}
+
+function normalizeDateValue(value){
+  if (!value) return '';
+  const s = String(value).trim();
+  if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return s;
+  const m = s.match(/(\d{1,2})[\/\-.](\d{1,2})[\/\-.](\d{2,4})/);
+  if (!m) return '';
+  const y = m[3].length === 2 ? '20' + m[3] : m[3];
+  return `${y}-${m[2].padStart(2,'0')}-${m[1].padStart(2,'0')}`;
+}
+
+function normalizeNumber(value){
+  if (value === null || value === undefined || value === '') return null;
+  const n = Number(String(value).replace(/[^0-9,.-]/g,'').replace(',','.'));
+  return Number.isFinite(n) ? Math.round(n * 100) / 100 : null;
+}
+
+function normalizePaymentMethod(value){
+  return /efectivo|cash/i.test(String(value || '')) ? 'Efectivo' : 'Tarjeta';
+}
+
+function normalizeCategory(value){
+  const s = String(value || '').toLowerCase();
+  if (!s) return 'Revisar';
+  const direct = CATEGORIES.find(c => c.toLowerCase() === s);
+  if (direct) return direct;
+  if (/rest|comida|bar|cafe|cafeter|meal|food/.test(s)) return 'Restaurante / comidas';
+  if (/taxi|vtc|uber|cabify/.test(s)) return 'Taxi / VTC';
+  if (/parking|aparc/.test(s)) return 'Parking';
+  if (/peaje|toll/.test(s)) return 'Peajes';
+  if (/hotel|hostal|aloj/.test(s)) return 'Alojamiento';
+  if (/viaje|travel|tren|avion|avión/.test(s)) return 'Viajes';
+  if (/combust|gasolin|fuel|diesel|gasoleo|gasóleo/.test(s)) return 'Combustible';
+  if (/oficina|office|material/.test(s)) return 'Material oficina';
+  if (/software|saas|licencia|subscription/.test(s)) return 'Software / SaaS';
+  if (/formaci|curso|training/.test(s)) return 'Formación';
+  if (/profesional|consult|asesor/.test(s)) return 'Servicios profesionales';
+  if (/representaci|comercial/.test(s)) return 'Representación comercial';
+  return 'Revisar';
+}
 
 async function runOcr(){
   if (!currentBlob) return;

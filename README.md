@@ -87,3 +87,17 @@ Tras desplegar en Vercel, en iPhone conviene cerrar y volver a abrir la PWA. Si 
 - La escritura en Google Sheets se ha reforzado: comprueba que exista la pestaña configurada, crea cabecera si la primera fila está vacía y añade la fila usando el rango `A1`.
 
 Tras desplegar esta versión, recarga completamente la PWA en Safari. Si la tenías instalada en pantalla de inicio, puede ser necesario cerrarla desde el selector de apps y abrirla de nuevo para que el service worker actualice la caché.
+
+
+## Lectura inteligente con Gemini
+
+Esta versión añade un endpoint serverless `api/analyze-ticket.js`. La app envía la imagen comprimida a Vercel y Vercel la analiza con Gemini usando la variable `GEMINI_API_KEY`. Si Gemini falla, la app usa OCR local como respaldo.
+
+Variables nuevas en Vercel:
+
+```env
+GEMINI_API_KEY=tu_api_key_de_google_ai_studio
+GEMINI_MODEL=gemini-1.5-flash
+```
+
+No expongas la API Key en el navegador. Debe quedar solo en Vercel.
