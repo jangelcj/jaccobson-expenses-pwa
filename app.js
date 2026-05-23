@@ -19,16 +19,18 @@ function init(){
 }
 function bind(){
   $('photoInput').addEventListener('change', handleFile);
-  $('ocrBtn').addEventListener('click', runOcr);
   $('clearBtn').addEventListener('click', clearCapture);
+  $('menuBtn').addEventListener('click', openDrawer);
+  $('closeDrawerBtn').addEventListener('click', closeDrawer);
+  $('drawerBackdrop').addEventListener('click', closeDrawer);
   $('saveBtn').addEventListener('click', saveExpense);
   $('recalcBtn').addEventListener('click', recalcVat);
-  $('exportBtn').addEventListener('click', exportExcel);
-  $('exportZipBtn').addEventListener('click', exportZip);
-  $('syncPendingBtn').addEventListener('click', syncPending);
+  $('exportBtn').addEventListener('click', ()=>{ closeDrawer(); exportExcel(); });
+  $('exportZipBtn').addEventListener('click', ()=>{ closeDrawer(); exportZip(); });
+  $('syncPendingBtn').addEventListener('click', ()=>{ closeDrawer(); syncPending(); });
   $('testGoogleBtn').addEventListener('click', testGoogle);
   $('connectGoogleBtn').addEventListener('click', ()=>{ window.location.href='/api/google-oauth-start'; });
-  $('wipeBtn').addEventListener('click', wipeAll);
+  $('wipeBtn').addEventListener('click', ()=>{ closeDrawer(); wipeAll(); });
   ['base','ivaTipo','total'].forEach(id=>$(id).addEventListener('change',recalcVat));
   window.addEventListener('beforeinstallprompt',e=>{ e.preventDefault(); installPrompt=e; $('installBtn').classList.remove('hidden'); });
   $('installBtn').addEventListener('click', async()=>{ if(installPrompt){ installPrompt.prompt(); installPrompt=null; $('installBtn').classList.add('hidden'); }});
@@ -38,9 +40,30 @@ function setStatus(message, type=''){
   $('status').classList.toggle('error', type==='error');
   $('status').classList.toggle('ok', type==='ok');
 }
-function showDiag(obj){
-  $('syncDiag').classList.remove('hidden');
+function showDiag(obj, level='warn'){
+  const diag = $('syncDiag');
+  const badge = $('diagBadge');
+  const title = $('diagTitle');
+  const summary = $('diagSummary');
+  diag.classList.remove('hidden');
+  badge.className = 'badge ' + (level || 'warn');
+  badge.textContent = level === 'ok' ? 'OK' : (level === 'error' ? 'Error' : 'Aviso');
+  const data = typeof obj === 'string' ? {message: obj} : (obj || {});
+  title.textContent = data.ok ? 'Google conectado correctamente' : (data.title || 'Información de diagnóstico');
+  summary.textContent = data.userMessage || data.message || data.error || (data.ok ? 'La carpeta de Drive y la hoja de cálculo son accesibles.' : 'Hay información técnica disponible para revisar.');
   $('syncDiagText').textContent = typeof obj === 'string' ? obj : JSON.stringify(obj, null, 2);
+}
+function openDrawer(){
+  $('appDrawer').classList.remove('hidden');
+  $('drawerBackdrop').classList.remove('hidden');
+  $('appDrawer').setAttribute('aria-hidden','false');
+  $('menuBtn').setAttribute('aria-expanded','true');
+}
+function closeDrawer(){
+  $('appDrawer').classList.add('hidden');
+  $('drawerBackdrop').classList.add('hidden');
+  $('appDrawer').setAttribute('aria-hidden','true');
+  $('menuBtn').setAttribute('aria-expanded','false');
 }
 function fmtBytes(n){ if(!n) return '0 KB'; return n>1024*1024 ? (n/1024/1024).toFixed(2)+' MB' : (n/1024).toFixed(0)+' KB'; }
 function migrateStorage(){
@@ -67,7 +90,7 @@ async function handleFile(e){
       blob = await imageCompression(blob, {maxSizeMB:0.65, maxWidthOrHeight:1400, useWebWorker:true, initialQuality:0.62, fileType:'image/jpeg'});
     }
     currentBlob = blob; currentDataUrl = await blobToDataURL(blob);
-    $('processedSize').textContent=fmtBytes(blob.size); $('preview').src=currentDataUrl; $('previewWrap').classList.remove('hidden'); $('ocrBtn').disabled=false; $('clearBtn').disabled=false; setStatus('Imagen lista. Puedes leer el ticket o introducir datos manualmente.', 'ok');
+    $('processedSize').textContent=fmtBytes(blob.size); $('preview').src=currentDataUrl; $('previewWrap').classList.remove('hidden'); $('clearBtn').disabled=false; setStatus('Imagen preparada. Iniciando lectura automática del ticket...', 'ok'); await runOcr();
   }catch(err){ console.error(err); setStatus('No he podido procesar la imagen. Prueba a hacer la foto en JPEG o selecciona otra.', 'error'); }
 }
 function blobToDataURL(blob){ return new Promise((res,rej)=>{ const r=new FileReader(); r.onload=()=>res(r.result); r.onerror=rej; r.readAsDataURL(blob); }); }
@@ -147,7 +170,7 @@ async function syncExpense(id){
     row['Ruta archivo'] = data.driveUrl; row['Drive Web URL'] = data.driveUrl; row['Sincronización'] = 'Sincronizado'; row['Último error']='';
     saveExpenses(rows); renderTable(); setStatus(`Gasto ${id} sincronizado con Google Drive y Google Sheets.`, 'ok');
   }catch(err){
-    console.error(err); row['Sincronización'] = 'Pendiente'; row['Último error'] = err.message; saveExpenses(rows); renderTable(); setStatus(`No se ha sincronizado con Google: ${err.message}`, 'error'); showDiag({id, error:err.message, endpoint:GOOGLE_SYNC_ENDPOINT});
+    console.error(err); row['Sincronización'] = 'Pendiente'; row['Último error'] = err.message; saveExpenses(rows); renderTable(); setStatus(`No se ha sincronizado con Google: ${err.message}`, 'error'); showDiag({id, title:'Sincronización pendiente', userMessage:'El gasto se ha guardado en este dispositivo, pero no se ha podido subir a Google. Revisa el detalle técnico o ejecuta Sincronizar pendientes desde Administración.', error:err.message, endpoint:GOOGLE_SYNC_ENDPOINT}, 'error');
   }
 }
 async function syncPending(){
@@ -160,11 +183,11 @@ async function testGoogle(){
   try{
     const res = await fetch(`${GOOGLE_SYNC_ENDPOINT}?check=1`, {method:'GET'});
     const data = await safeJson(res);
-    showDiag(data);
+    showDiag({...data, userMessage:'La conexión con Google funciona correctamente. Drive y Google Sheets son accesibles.'}, data.ok ? 'ok' : 'error');
     if(!res.ok || !data.ok) throw new Error(data.error || `HTTP ${res.status}`);
-    setStatus('Conexión Google correcta. La carpeta Drive y el Google Sheets son accesibles.', 'ok');
+    setStatus('Conexión Google correcta.', 'ok');
   }catch(err){
-    showDiag({error:err.message}); setStatus(`La prueba Google ha fallado: ${err.message}`, 'error');
+    showDiag({title:'Prueba Google fallida', userMessage:'No se ha podido verificar la conexión con Google. Revisa configuración OAuth, permisos de Drive/Sheets o variables de Vercel.', error:err.message}, 'error'); setStatus(`La prueba Google ha fallado: ${err.message}`, 'error');
   }
 }
 function exportExcel(){
@@ -181,6 +204,6 @@ async function exportZip(){
   const blob=await zip.generateAsync({type:'blob'}); downloadBlob(blob, `Jaccobson_Tickets_${new Date().toISOString().slice(0,10)}.zip`);
 }
 function downloadBlob(blob, name){ const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download=name; a.click(); setTimeout(()=>URL.revokeObjectURL(a.href),1000); }
-function clearCapture(){ currentBlob=null; currentFile=null; currentDataUrl=null; $('photoInput').value=''; $('previewWrap').classList.add('hidden'); $('ocrBtn').disabled=true; $('clearBtn').disabled=true; setStatus(''); }
+function clearCapture(){ currentBlob=null; currentFile=null; currentDataUrl=null; $('photoInput').value=''; $('previewWrap').classList.add('hidden'); $('clearBtn').disabled=true; $('progress').classList.add('hidden'); $('progress').value=0; setStatus(''); }
 function wipeAll(){ if(!confirm('¿Borrar todos los gastos y tickets almacenados en este dispositivo?')) return; Object.keys(localStorage).filter(k=>k.startsWith(IMG_KEY_PREFIX)||k===STORAGE_KEY||k===OLD_STORAGE_KEY).forEach(k=>localStorage.removeItem(k)); renderTable(); }
 init();

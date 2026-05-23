@@ -61,3 +61,16 @@ Sube todos los archivos a GitHub y conecta el repositorio con Vercel. Al hacer c
 ## Seguridad
 
 No compartas el refresh token. Permite a la app subir archivos a Drive y escribir en Sheets en nombre de tu usuario Google.
+
+## Versión rediseñada UX móvil
+
+Cambios incluidos:
+
+- Menú hamburguesa superior con dos bloques: Ajustes y Administración.
+- Ajustes contiene Conectar Google, Probar Google y diagnóstico legible con detalle técnico desplegable.
+- Administración contiene Exportar Excel, Exportar ZIP, Sincronizar pendientes y Borrar datos locales.
+- La lectura OCR se ejecuta automáticamente después de mostrar la previsualización del ticket.
+- La pantalla principal queda centrada en el flujo diario: capturar ticket, revisar datos y guardar gasto.
+- Service worker actualizado para forzar renovación de caché tras el despliegue.
+
+Tras desplegar en Vercel, en iPhone conviene cerrar y volver a abrir la PWA. Si siguiera mostrando la versión anterior, abrir Safari, cargar la URL de Vercel y volver a añadir la app a pantalla de inicio.

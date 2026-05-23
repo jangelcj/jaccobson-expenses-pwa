@@ -14,18 +14,64 @@
 </head>
 <body>
   <header class="app-header">
-    <div>
+    <div class="brand-block">
       <p class="eyebrow">Jaccobson Capital</p>
-      <h1>Registro fiscal de gastos</h1>
-      <p class="sub">Captura tickets, extrae datos, archiva justificantes en Google Drive y registra gastos en Google Sheets.</p>
+      <h1>Gastos</h1>
+      <p class="sub">Fotografía el ticket, revisa los datos fiscales y guarda el justificante en Google Drive con registro en Google Sheets.</p>
     </div>
-    <button id="installBtn" class="ghost hidden">Instalar</button>
+    <div class="header-actions">
+      <button id="installBtn" class="ghost hidden">Instalar</button>
+      <button id="menuBtn" class="menu-btn" aria-label="Abrir ajustes y administración" aria-expanded="false">☰</button>
+    </div>
   </header>
+
+  <div id="drawerBackdrop" class="drawer-backdrop hidden"></div>
+  <aside id="appDrawer" class="drawer hidden" aria-hidden="true">
+    <div class="drawer-head">
+      <div>
+        <p class="eyebrow dark">Menú</p>
+        <h2>Ajustes y administración</h2>
+      </div>
+      <button id="closeDrawerBtn" class="icon-btn" aria-label="Cerrar menú">×</button>
+    </div>
+
+    <section class="drawer-section">
+      <h3>Ajustes</h3>
+      <p>Conexión con Google y comprobación de servicio.</p>
+      <div class="drawer-actions">
+        <button id="connectGoogleBtn" class="ghost">Conectar Google</button>
+        <button id="testGoogleBtn" class="ghost">Probar Google</button>
+      </div>
+      <div id="syncDiag" class="diag-card hidden">
+        <div class="diag-status">
+          <span id="diagBadge" class="badge">Diagnóstico</span>
+          <strong id="diagTitle">Resultado de conexión</strong>
+        </div>
+        <p id="diagSummary">Aquí aparecerá el resultado de la prueba o del último error de sincronización.</p>
+        <details>
+          <summary>Ver detalle técnico</summary>
+          <code id="syncDiagText"></code>
+        </details>
+      </div>
+    </section>
+
+    <section class="drawer-section">
+      <h3>Administración</h3>
+      <p>Acciones de soporte, exportación y mantenimiento local.</p>
+      <div class="drawer-actions">
+        <button id="syncPendingBtn" class="ghost">Sincronizar pendientes</button>
+        <button id="exportBtn" class="ghost">Exportar Excel</button>
+        <button id="exportZipBtn" class="ghost">Exportar ZIP tickets</button>
+        <button id="wipeBtn" class="danger">Borrar datos locales</button>
+      </div>
+    </section>
+  </aside>
 
   <main>
     <section class="card capture-card">
-      <h2>1. Captura del ticket</h2>
-      <p>Usa la cámara del iPhone o selecciona una imagen. Se admite HEIC/HEIF, JPEG y PNG.</p>
+      <div class="step-pill">1</div>
+      <h2>Capturar ticket</h2>
+      <p>Usa la cámara del iPhone o selecciona una imagen. La lectura OCR se ejecutará automáticamente tras la previsualización.</p>
       <label class="file-cta">
         <input id="photoInput" type="file" accept="image/*,.heic,.heif" capture="environment" />
         Hacer foto o seleccionar ticket
@@ -39,16 +85,17 @@
           <span>Tamaño procesado</span><strong id="processedSize">—</strong>
         </div>
       </div>
-      <div class="actions">
-        <button id="ocrBtn" disabled>Leer ticket</button>
-        <button id="clearBtn" class="ghost" disabled>Limpiar</button>
+      <div class="actions single-line">
+        <button id="clearBtn" class="ghost" disabled>Limpiar captura</button>
       </div>
       <progress id="progress" max="100" value="0" class="hidden"></progress>
       <p id="status" class="status"></p>
     </section>
 
     <section class="card">
-      <h2>2. Datos fiscales extraídos</h2>
+      <div class="step-pill">2</div>
+      <h2>Revisar datos fiscales</h2>
+      <p>Comprueba los importes, categoría y motivo profesional antes de guardar.</p>
       <div class="form-grid">
         <label>Fecha gasto<input id="fecha" type="date" /></label>
         <label>Proveedor<input id="proveedor" type="text" placeholder="Nombre del establecimiento" /></label>
@@ -63,29 +110,27 @@
         <label>Proyecto/cliente<input id="proyecto" type="text" placeholder="Opcional" /></label>
         <label>Estado fiscal<select id="estadoFiscal"></select></label>
       </div>
-      <label class="full">Texto OCR<textarea id="ocrText" rows="8" placeholder="Aquí aparecerá el texto leído del ticket"></textarea></label>
+      <details class="ocr-details">
+        <summary>Ver texto leído del ticket</summary>
+        <label class="full">Texto OCR<textarea id="ocrText" rows="8" placeholder="Aquí aparecerá el texto leído del ticket"></textarea></label>
+      </details>
       <label class="full">Observaciones<textarea id="observaciones" rows="3" placeholder="Alertas, datos no visibles o necesidad de factura completa"></textarea></label>
       <div class="actions">
         <div class="save-bar">
-          <button id="saveBtn">Guardar y sincronizar</button>
+          <button id="saveBtn">Guardar gasto</button>
           <button id="recalcBtn" class="ghost">Recalcular IVA</button>
         </div>
       </div>
     </section>
 
     <section class="card">
-      <div class="section-head">
-        <div><h2>3. Libro de gastos</h2><p>Los datos se guardan localmente y, si Vercel está configurado, se sincronizan con Google Drive y Google Sheets.</p></div>
-        <div class="actions compact">
-          <button id="exportBtn">Exportar Excel</button>
-          <button id="exportZipBtn" class="ghost">Exportar ZIP</button>
-          <button id="syncPendingBtn" class="ghost">Sincronizar pendientes</button>
-          <button id="testGoogleBtn" class="ghost">Probar Google</button>
-          <button id="connectGoogleBtn" class="ghost">Conectar Google</button>
-          <button id="wipeBtn" class="danger">Borrar todo</button>
+      <div class="section-head simple">
+        <div>
+          <div class="step-pill">3</div>
+          <h2>Libro de gastos</h2>
+          <p>Últimos registros guardados en este dispositivo y sincronizados con Google cuando corresponde.</p>
         </div>
       </div>
-      <div id="syncDiag" class="sync-panel hidden"><strong>Diagnóstico</strong><br><code id="syncDiagText"></code></div>
       <div id="mobileExpenseList" class="mobile-expense-list"></div>
       <div class="table-wrap">
         <table id="expensesTable">
@@ -96,7 +141,7 @@
     </section>
   </main>
 
-  <footer>PWA · Al guardar, los tickets se archivan en Google Drive y el registro se añade a Google Sheets si el backend de Vercel está configurado.</footer>
+  <footer>PWA · Los tickets se archivan en Google Drive y el registro se añade a Google Sheets.</footer>
 
   <script src="https://cdn.jsdelivr.net/npm/heic2any@0.0.4/dist/heic2any.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/browser-image-compression@2.0.2/dist/browser-image-compression.js"></script>
