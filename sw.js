@@ -1,4 +1,4 @@
-const CACHE = 'jc-expenses-v6';
+const CACHE = 'jc-expenses-v7';
 const ASSETS = ['./','./index.html','./styles.css','./app.js','./manifest.webmanifest'];
 self.addEventListener('install', event => {
   self.skipWaiting();

@@ -1,6 +1,15 @@
 const $ = (id) => document.getElementById(id);
-const STORAGE_KEY = 'jc_expenses_v6';
-const LEGACY_KEYS = ['jc_expenses_v5', 'jc_expenses_v4', 'jc_expenses_v3', 'jc_expenses_v2', 'jc_expenses_v1'];
+const APP_VERSION = 'v7';
+const APP_VERSION_DATE = '2026-05-23';
+const APP_CHANGES = [
+  'Añadida opción Acerca de en el menú Ajustes.',
+  'Versión desplegada visible desde la app.',
+  'Resumen de últimos cambios visible para control de despliegue.',
+  'Se mantiene Gemini como lectura inteligente principal y OCR local como respaldo.',
+  'Se mantiene sincronización con Google Drive y Google Sheets.'
+];
+const STORAGE_KEY = 'jc_expenses_v7';
+const LEGACY_KEYS = ['jc_expenses_v6', 'jc_expenses_v5', 'jc_expenses_v4', 'jc_expenses_v3', 'jc_expenses_v2', 'jc_expenses_v1'];
 const IMG_KEY_PREFIX = 'jc_ticket_';
 const CATEGORIES = ['Restaurante / comidas','Taxi / VTC','Parking','Peajes','Alojamiento','Viajes','Combustible','Material oficina','Software / SaaS','Formación','Servicios profesionales','Representación comercial','Otros','Revisar'];
 const ESTADOS = ['Factura completa','Factura simplificada deducible','Ticket/factura simplificada no deducible IVA','Pendiente de revisión'];
@@ -19,8 +28,19 @@ function init(){
   $('estadoFiscal').value = 'Pendiente de revisión';
   migrateStorage();
   renderTable();
+  renderAbout();
   bind();
   if ('serviceWorker' in navigator) navigator.serviceWorker.register('./sw.js').catch(console.warn);
+}
+
+
+function renderAbout(){
+  const versionEl = $('aboutVersion');
+  const dateEl = $('aboutDate');
+  const changesEl = $('aboutChanges');
+  if (versionEl) versionEl.textContent = APP_VERSION;
+  if (dateEl) dateEl.textContent = APP_VERSION_DATE;
+  if (changesEl) changesEl.innerHTML = APP_CHANGES.map(change => `<li>${escapeHtml(change)}</li>`).join('');
 }
 
 function bind(){
