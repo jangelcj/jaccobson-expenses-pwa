@@ -74,3 +74,16 @@ Cambios incluidos:
 - Service worker actualizado para forzar renovación de caché tras el despliegue.
 
 Tras desplegar en Vercel, en iPhone conviene cerrar y volver a abrir la PWA. Si siguiera mostrando la versión anterior, abrir Safari, cargar la URL de Vercel y volver a añadir la app a pantalla de inicio.
+
+## Cambios v4 UX y sincronización
+
+- El botón **Limpiar captura** limpia también el formulario completo.
+- Las secciones **Revisar datos fiscales** y **Libro de gastos** son contraíbles.
+- El botón de captura permite elegir entre **cámara** y **fototeca**.
+- El OCR se lanza automáticamente tras mostrar la previsualización.
+- Los campos no identificados con seguridad por OCR se marcan con un icono de advertencia.
+- El campo **Últimos 4 dígitos tarjeta** se sustituye por **Forma de pago** con Tarjeta por defecto.
+- **Recalcular IVA** se ubica junto a **Total (€)** y descuenta el IVA del total usando el % seleccionado.
+- La escritura en Google Sheets se ha reforzado: comprueba que exista la pestaña configurada, crea cabecera si la primera fila está vacía y añade la fila usando el rango `A1`.
+
+Tras desplegar esta versión, recarga completamente la PWA en Safari. Si la tenías instalada en pantalla de inicio, puede ser necesario cerrarla desde el selector de apps y abrirla de nuevo para que el service worker actualice la caché.
