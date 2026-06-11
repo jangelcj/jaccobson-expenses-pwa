@@ -6,6 +6,8 @@ Briefing permanente del proyecto para futuras sesiones.
 
 PWA para registro fiscal de gastos de empresa, pensada para una **sociedad española de un solo empleado** ("Jaccobson Capital"). Flujo: foto del ticket → análisis fiscal con IA (Gemini) → revisión en formulario → guardado local → sincronización con Google Drive (justificante) + Google Sheets (registro contable). Toda la UI y los mensajes están en español.
 
+**Navegación (v9+)**: la home es un *launcher* con tiles de acción (Capturar, Libro, Dashboard, Sincronizar, Exportar, Ajustes/Google). Cada tile abre una vista independiente (`<section class="view">` dentro de `<main>`; solo una tiene `.active`). La función `navigate(view)` en `app.js` alterna vistas, gestiona el botón "volver" (`#backBtn`) y el título de cabecera (`#viewTitle`). Ya **no existe el drawer lateral**; `VIEW_TITLES` define las vistas válidas. El tile "Sincronizar" no navega: ejecuta `syncPending()` y muestra feedback en la home (`#homeStatus`). `setStatus` es consciente de la vista activa.
+
 ## Stack
 
 - **Frontend**: HTML/CSS/JS plano, **sin framework ni build step**. Librerías por CDN (jsDelivr):
@@ -23,8 +25,8 @@ PWA para registro fiscal de gastos de empresa, pensada para una **sociedad espa�
 
 ```
 jaccobson-expenses-pwa/
-├── index.html              # UI: capturar → revisar → dashboard → libro de gastos
-├── app.js                  # Toda la lógica de cliente (~753 líneas)
+├── index.html              # UI: home launcher + 6 vistas (capturar, libro, dashboard, exportar, ajustes)
+├── app.js                  # Toda la lógica de cliente, incl. navegación por vistas
 ├── styles.css              # Estilos
 ├── manifest.webmanifest    # Manifiesto PWA
 ├── sw.js                   # Service worker (cache offline; ignora /api/)
@@ -91,7 +93,7 @@ Todas las funciones usan un helper `env(name)` que lanza error explícito (`Falt
 
 Las cuatro funciones de `/api` están **completas y operativas**. La app funciona end-to-end: captura, análisis IA con fallback a OCR local, guardado local, sincronización Google y exportaciones (Excel, ZIP de tickets, paquete de asesoría con manifiesto JSON + hashes SHA-256).
 
-- Versión de app: **v8** (`2026-05-23`). `package.json` version: `1.2.0`.
+- Versión de app: **v9** (`2026-06-11`) — home tipo launcher con navegación por vistas. `package.json` version: `1.2.0`.
 - Rama principal: `main`. Despliegue por subida de archivos a GitHub (commits "Add files via upload").
 
 ## Observaciones / puntos a vigilar

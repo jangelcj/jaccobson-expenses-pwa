@@ -12,89 +12,18 @@
   <link rel="apple-touch-icon" href="icons/icon-192.svg" />
   <link rel="stylesheet" href="styles.css" />
 </head>
-<body>
+<body data-view="home">
   <header class="app-header">
-    <div class="brand-block">
+    <button id="backBtn" class="icon-btn hidden" aria-label="Volver al inicio">←</button>
+    <div class="brand-block" id="brandBlock">
       <p class="eyebrow">Jaccobson Capital</p>
       <h1>Gastos</h1>
-      <p class="sub">Captura el ticket, revisa los datos fiscales y archiva el justificante en Google Drive con registro en Google Sheets.</p>
     </div>
+    <h1 id="viewTitle" class="view-title hidden"></h1>
     <div class="header-actions">
       <button id="installBtn" class="ghost hidden">Instalar</button>
-      <button id="menuBtn" class="menu-btn" aria-label="Abrir ajustes y administración" aria-expanded="false">☰</button>
     </div>
   </header>
-
-  <div id="drawerBackdrop" class="drawer-backdrop hidden"></div>
-  <aside id="appDrawer" class="drawer hidden" aria-hidden="true">
-    <div class="drawer-head">
-      <div>
-        <p class="eyebrow dark">Menú</p>
-        <h2>Ajustes y administración</h2>
-      </div>
-      <button id="closeDrawerBtn" class="icon-btn" aria-label="Cerrar menú">×</button>
-    </div>
-
-    <section class="drawer-section">
-      <h3>Ajustes</h3>
-      <p>Conexión con Google y comprobación de servicio.</p>
-      <div class="drawer-actions">
-        <button id="connectGoogleBtn" class="ghost">Conectar Google</button>
-        <button id="testGoogleBtn" class="ghost">Probar Google</button>
-      </div>
-      <div id="syncDiag" class="diag-card hidden">
-        <div class="diag-status">
-          <span id="diagBadge" class="badge">Diagnóstico</span>
-          <strong id="diagTitle">Resultado de conexión</strong>
-        </div>
-        <p id="diagSummary">Aquí aparecerá el resultado de la prueba o del último error de sincronización.</p>
-        <details>
-          <summary>Ver detalle técnico</summary>
-          <code id="syncDiagText"></code>
-        </details>
-      </div>
-    </section>
-
-
-    <section class="drawer-section about-section">
-      <h3>Acerca de</h3>
-      <p>Información de versión desplegada y cambios incluidos.</p>
-      <div class="about-card">
-        <div class="about-row"><span>Aplicación</span><strong>Jaccobson Capital · Gastos</strong></div>
-        <div class="about-row"><span>Versión</span><strong id="aboutVersion">v8</strong></div>
-        <div class="about-row"><span>Fecha</span><strong id="aboutDate">2026-05-23</strong></div>
-        <details open>
-          <summary>Últimos cambios</summary>
-          <ul id="aboutChanges">
-            <li>Hash SHA-256 del ticket para robustez documental.</li>
-            <li>Análisis fiscal inteligente de Gemini.</li>
-            <li>Dashboard simple operativo.</li>
-            <li>Exportación para asesoría con Excel, tickets y manifiesto de evidencias.</li>
-          </ul>
-        </details>
-      </div>
-    </section>
-
-    <section class="drawer-section">
-      <h3>Dashboard</h3>
-      <p>Resumen operativo sencillo de gastos, IVA, pendientes y sincronización.</p>
-      <div class="drawer-actions">
-        <button id="showDashboardBtn" class="ghost">Ver dashboard</button>
-      </div>
-    </section>
-
-    <section class="drawer-section">
-      <h3>Administración</h3>
-      <p>Acciones de soporte, exportación y mantenimiento local.</p>
-      <div class="drawer-actions">
-        <button id="syncPendingBtn" class="ghost">Sincronizar pendientes</button>
-        <button id="exportBtn" class="ghost">Exportar Excel</button>
-        <button id="exportZipBtn" class="ghost">Exportar ZIP tickets</button>
-        <button id="advisorExportBtn" class="ghost">Exportar para asesoría</button>
-        <button id="wipeBtn" class="danger">Borrar datos locales</button>
-      </div>
-    </section>
-  </aside>
 
   <div id="sourceSheet" class="source-sheet hidden" role="dialog" aria-modal="true" aria-labelledby="sourceTitle">
     <div class="source-card">
@@ -107,35 +36,66 @@
   </div>
 
   <main>
-    <section class="card capture-card">
-      <div class="step-pill">1</div>
-      <h2>Capturar ticket</h2>
-      <p>Haz una foto o selecciona una imagen. La lectura OCR se ejecutará automáticamente tras mostrar la previsualización.</p>
-      <button id="chooseTicketBtn" class="file-cta">Hacer foto o seleccionar ticket</button>
-      <input id="cameraInput" class="hidden-input" type="file" accept="image/*,.heic,.heif" capture="environment" />
-      <input id="libraryInput" class="hidden-input" type="file" accept="image/*,.heic,.heif" />
-      <div id="previewWrap" class="preview-wrap hidden">
-        <img id="preview" alt="Vista previa del ticket" />
-        <div class="meta-grid">
-          <span>Archivo original</span><strong id="originalName">—</strong>
-          <span>Tipo</span><strong id="originalType">—</strong>
-          <span>Tamaño original</span><strong id="originalSize">—</strong>
-          <span>Tamaño procesado</span><strong id="processedSize">—</strong>
-        </div>
-      </div>
-      <div class="actions single-line">
-        <button id="clearBtn" class="ghost" disabled>Limpiar captura</button>
-      </div>
-      <progress id="progress" max="100" value="0" class="hidden"></progress>
-      <p id="status" class="status"></p>
+    <!-- ============ HOME / LAUNCHER ============ -->
+    <section id="view-home" class="view active" aria-label="Inicio">
+      <p class="home-sub">Captura el ticket, revisa los datos fiscales y archívalo en Google Drive con registro en Google Sheets.</p>
+      <nav class="launcher" aria-label="Acciones principales">
+        <button class="tile tile-primary" id="tileCapture">
+          <span class="tile-icon">📷</span>
+          <span class="tile-label">Capturar ticket</span>
+          <span class="tile-hint">Foto o fototeca + lectura con IA</span>
+        </button>
+        <button class="tile" id="tileBook">
+          <span class="tile-icon">📖</span>
+          <span class="tile-label">Libro de gastos</span>
+        </button>
+        <button class="tile" id="tileDashboard">
+          <span class="tile-icon">📊</span>
+          <span class="tile-label">Dashboard</span>
+        </button>
+        <button class="tile" id="tileSync">
+          <span class="tile-icon">🔄</span>
+          <span class="tile-label">Sincronizar</span>
+        </button>
+        <button class="tile" id="tileExport">
+          <span class="tile-icon">⬇️</span>
+          <span class="tile-label">Exportar</span>
+        </button>
+        <button class="tile tile-wide" id="tileSettings">
+          <span class="tile-icon">⚙️</span>
+          <span class="tile-label">Ajustes / Google</span>
+        </button>
+      </nav>
+      <p id="homeStatus" class="status"></p>
     </section>
 
-    <section class="card collapsible" id="reviewSection">
-      <button class="collapse-toggle" type="button" data-target="reviewBody" aria-expanded="true">
-        <span><span class="step-pill inline">2</span> Revisar datos fiscales</span>
-        <span class="chevron">⌄</span>
-      </button>
-      <div id="reviewBody" class="collapse-body">
+    <!-- ============ CAPTURAR ============ -->
+    <section id="view-capture" class="view" aria-label="Capturar ticket">
+      <section class="card capture-card">
+        <div class="step-pill">1</div>
+        <h2>Capturar ticket</h2>
+        <p>Haz una foto o selecciona una imagen. La lectura se ejecuta automáticamente tras la previsualización.</p>
+        <button id="chooseTicketBtn" class="file-cta">Hacer foto o seleccionar ticket</button>
+        <input id="cameraInput" class="hidden-input" type="file" accept="image/*,.heic,.heif" capture="environment" />
+        <input id="libraryInput" class="hidden-input" type="file" accept="image/*,.heic,.heif" />
+        <div id="previewWrap" class="preview-wrap hidden">
+          <img id="preview" alt="Vista previa del ticket" />
+          <div class="meta-grid">
+            <span>Archivo original</span><strong id="originalName">—</strong>
+            <span>Tipo</span><strong id="originalType">—</strong>
+            <span>Tamaño original</span><strong id="originalSize">—</strong>
+            <span>Tamaño procesado</span><strong id="processedSize">—</strong>
+          </div>
+        </div>
+        <div class="actions single-line">
+          <button id="clearBtn" class="ghost" disabled>Limpiar captura</button>
+        </div>
+        <progress id="progress" max="100" value="0" class="hidden"></progress>
+        <p id="status" class="status"></p>
+      </section>
+
+      <section class="card" id="reviewSection">
+        <h2><span class="step-pill inline">2</span> Revisar datos fiscales</h2>
         <p>Comprueba los importes, categoría y motivo profesional antes de guardar.</p>
         <div class="form-grid">
           <label class="field" data-field="fecha"><span>Fecha gasto</span><input id="fecha" type="date" /></label>
@@ -163,34 +123,13 @@
             <p id="saveFeedback" class="save-feedback hidden"></p>
           </div>
         </div>
-      </div>
+      </section>
     </section>
 
-    <section class="card" id="dashboardSection">
-      <div class="section-head simple">
-        <div class="step-pill">D</div>
-        <h2>Dashboard</h2>
-        <p>Resumen simple para seguimiento fiscal y operativo.</p>
-      </div>
-      <div class="dashboard-grid">
-        <div class="metric-card"><span>Gastos registrados</span><strong id="dashCount">0</strong></div>
-        <div class="metric-card"><span>Total gasto</span><strong id="dashTotal">0,00 €</strong></div>
-        <div class="metric-card"><span>IVA soportado</span><strong id="dashVat">0,00 €</strong></div>
-        <div class="metric-card"><span>Pendientes revisión</span><strong id="dashPending">0</strong></div>
-        <div class="metric-card"><span>Sincronización</span><strong id="dashSync">0/0</strong></div>
-      </div>
-      <div class="dashboard-list">
-        <h3>Principales categorías</h3>
-        <ul id="dashCategories"><li><span>Sin datos todavía</span><strong>—</strong></li></ul>
-      </div>
-    </section>
-
-    <section class="card collapsible" id="bookSection">
-      <button class="collapse-toggle" type="button" data-target="bookBody" aria-expanded="true">
-        <span><span class="step-pill inline">3</span> Libro de gastos</span>
-        <span class="chevron">⌄</span>
-      </button>
-      <div id="bookBody" class="collapse-body">
+    <!-- ============ LIBRO DE GASTOS ============ -->
+    <section id="view-book" class="view" aria-label="Libro de gastos">
+      <section class="card">
+        <h2><span class="step-pill inline">3</span> Libro de gastos</h2>
         <p>Últimos registros guardados en este dispositivo y sincronizados con Google cuando corresponde.</p>
         <div id="mobileExpenseList" class="mobile-expense-list"></div>
         <div class="table-wrap">
@@ -199,7 +138,104 @@
             <tbody></tbody>
           </table>
         </div>
-      </div>
+      </section>
+    </section>
+
+    <!-- ============ DASHBOARD ============ -->
+    <section id="view-dashboard" class="view" aria-label="Dashboard">
+      <section class="card" id="dashboardSection">
+        <div class="section-head simple">
+          <div class="step-pill">D</div>
+          <h2>Dashboard</h2>
+          <p>Resumen simple para seguimiento fiscal y operativo.</p>
+        </div>
+        <div class="dashboard-grid">
+          <div class="metric-card"><span>Gastos registrados</span><strong id="dashCount">0</strong></div>
+          <div class="metric-card"><span>Total gasto</span><strong id="dashTotal">0,00 €</strong></div>
+          <div class="metric-card"><span>IVA soportado</span><strong id="dashVat">0,00 €</strong></div>
+          <div class="metric-card"><span>Pendientes revisión</span><strong id="dashPending">0</strong></div>
+          <div class="metric-card"><span>Sincronización</span><strong id="dashSync">0/0</strong></div>
+        </div>
+        <div class="dashboard-list">
+          <h3>Principales categorías</h3>
+          <ul id="dashCategories"><li><span>Sin datos todavía</span><strong>—</strong></li></ul>
+        </div>
+      </section>
+    </section>
+
+    <!-- ============ EXPORTAR ============ -->
+    <section id="view-export" class="view" aria-label="Exportar">
+      <section class="card">
+        <h2>Exportar</h2>
+        <p>Genera ficheros para tu archivo o para enviar a la asesoría.</p>
+        <div class="action-list">
+          <button id="exportBtn" class="action-row">
+            <span class="action-icon">📄</span>
+            <span class="action-text"><strong>Exportar Excel</strong><small>Libro de gastos con hoja de resumen.</small></span>
+          </button>
+          <button id="exportZipBtn" class="action-row">
+            <span class="action-icon">🗜️</span>
+            <span class="action-text"><strong>Exportar ZIP de tickets</strong><small>Imágenes de los tickets guardados localmente.</small></span>
+          </button>
+          <button id="advisorExportBtn" class="action-row">
+            <span class="action-icon">📦</span>
+            <span class="action-text"><strong>Exportar para asesoría</strong><small>Excel + tickets + manifiesto con hashes SHA-256.</small></span>
+          </button>
+        </div>
+      </section>
+    </section>
+
+    <!-- ============ AJUSTES / GOOGLE ============ -->
+    <section id="view-settings" class="view" aria-label="Ajustes y administración">
+      <section class="card">
+        <h2>Conexión con Google</h2>
+        <p>Conecta tu cuenta y comprueba el acceso a Drive y Google Sheets.</p>
+        <div class="action-list">
+          <button id="connectGoogleBtn" class="action-row">
+            <span class="action-icon">🔗</span>
+            <span class="action-text"><strong>Conectar Google</strong><small>Autoriza el acceso y genera el refresh token.</small></span>
+          </button>
+          <button id="testGoogleBtn" class="action-row">
+            <span class="action-icon">✅</span>
+            <span class="action-text"><strong>Probar Google</strong><small>Verifica Drive, Sheets y la pestaña configurada.</small></span>
+          </button>
+        </div>
+        <div id="syncDiag" class="diag-card hidden">
+          <div class="diag-status">
+            <span id="diagBadge" class="badge">Diagnóstico</span>
+            <strong id="diagTitle">Resultado de conexión</strong>
+          </div>
+          <p id="diagSummary">Aquí aparecerá el resultado de la prueba o del último error de sincronización.</p>
+          <details>
+            <summary>Ver detalle técnico</summary>
+            <code id="syncDiagText"></code>
+          </details>
+        </div>
+      </section>
+
+      <section class="card">
+        <h2>Administración</h2>
+        <p>Mantenimiento de los datos almacenados en este dispositivo.</p>
+        <div class="action-list">
+          <button id="wipeBtn" class="action-row danger">
+            <span class="action-icon">🗑️</span>
+            <span class="action-text"><strong>Borrar datos locales</strong><small>Elimina todos los gastos y tickets de este dispositivo.</small></span>
+          </button>
+        </div>
+      </section>
+
+      <section class="card about-section">
+        <h2>Acerca de</h2>
+        <div class="about-card">
+          <div class="about-row"><span>Aplicación</span><strong>Jaccobson Capital · Gastos</strong></div>
+          <div class="about-row"><span>Versión</span><strong id="aboutVersion">v9</strong></div>
+          <div class="about-row"><span>Fecha</span><strong id="aboutDate">2026-06-11</strong></div>
+          <details open>
+            <summary>Últimos cambios</summary>
+            <ul id="aboutChanges"></ul>
+          </details>
+        </div>
+      </section>
     </section>
   </main>
 

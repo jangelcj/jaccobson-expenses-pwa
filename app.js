@@ -1,13 +1,15 @@
 const $ = (id) => document.getElementById(id);
-const APP_VERSION = 'v8';
-const APP_VERSION_DATE = '2026-05-23';
+const APP_VERSION = 'v9';
+const APP_VERSION_DATE = '2026-06-11';
 const APP_CHANGES = [
+  'Nueva home tipo launcher: menú con accesos directos a Capturar, Libro, Dashboard, Sincronizar, Exportar y Ajustes.',
+  'Navegación por vistas independientes en lugar del menú lateral; cada acción abre su propia pantalla.',
   'Añadido hash SHA-256 del ticket para robustez documental e integridad probatoria.',
   'Gemini incorpora análisis fiscal inteligente: deducibilidad, riesgos, tipo documental y acciones recomendadas.',
-  'Nuevo Dashboard con métricas simples de gasto, IVA, pendientes y sincronización.',
-  'Nueva exportación para asesoría: Excel + tickets + manifiesto de evidencias en ZIP.',
-  'Se mantiene la arquitectura ligera: PWA, Vercel, Gemini, Google Drive y Google Sheets.'
+  'Dashboard con métricas simples de gasto, IVA, pendientes y sincronización.',
+  'Exportación para asesoría: Excel + tickets + manifiesto de evidencias en ZIP.'
 ];
+const VIEW_TITLES = { home:'', capture:'Capturar ticket', book:'Libro de gastos', dashboard:'Dashboard', export:'Exportar', settings:'Ajustes / Google' };
 const STORAGE_KEY = 'jc_expenses_v8';
 const LEGACY_KEYS = ['jc_expenses_v7','jc_expenses_v6', 'jc_expenses_v5', 'jc_expenses_v4', 'jc_expenses_v3', 'jc_expenses_v2', 'jc_expenses_v1'];
 const IMG_KEY_PREFIX = 'jc_ticket_';
@@ -33,7 +35,23 @@ function init(){
   renderDashboard();
   renderAbout();
   bind();
+  navigate('home');
   if ('serviceWorker' in navigator) navigator.serviceWorker.register('./sw.js').catch(console.warn);
+}
+
+function navigate(view){
+  if (!Object.prototype.hasOwnProperty.call(VIEW_TITLES, view)) view = 'home';
+  document.querySelectorAll('.view').forEach(v => v.classList.toggle('active', v.id === `view-${view}`));
+  document.body.dataset.view = view;
+  const isHome = view === 'home';
+  $('backBtn').classList.toggle('hidden', isHome);
+  $('brandBlock').classList.toggle('hidden', !isHome);
+  const titleEl = $('viewTitle');
+  titleEl.textContent = VIEW_TITLES[view];
+  titleEl.classList.toggle('hidden', isHome);
+  if (view === 'book') renderTable();
+  if (view === 'dashboard') renderDashboard();
+  window.scrollTo(0, 0);
 }
 
 
@@ -47,6 +65,16 @@ function renderAbout(){
 }
 
 function bind(){
+  // Navegación: home launcher y botón volver
+  $('backBtn').addEventListener('click', () => navigate('home'));
+  $('tileCapture').addEventListener('click', () => { navigate('capture'); openSourceSheet(); });
+  $('tileBook').addEventListener('click', () => navigate('book'));
+  $('tileDashboard').addEventListener('click', () => navigate('dashboard'));
+  $('tileSync').addEventListener('click', () => syncPending());
+  $('tileExport').addEventListener('click', () => navigate('export'));
+  $('tileSettings').addEventListener('click', () => navigate('settings'));
+
+  // Captura de ticket
   $('chooseTicketBtn').addEventListener('click', openSourceSheet);
   $('openCameraBtn').addEventListener('click', () => chooseSource('cameraInput'));
   $('openLibraryBtn').addEventListener('click', () => chooseSource('libraryInput'));
@@ -55,26 +83,30 @@ function bind(){
   $('cameraInput').addEventListener('change', handleFile);
   $('libraryInput').addEventListener('change', handleFile);
   $('clearBtn').addEventListener('click', clearCapture);
-  $('menuBtn').addEventListener('click', openDrawer);
-  $('closeDrawerBtn').addEventListener('click', closeDrawer);
-  $('drawerBackdrop').addEventListener('click', closeDrawer);
+
+  // Revisión y guardado
   $('saveBtn').addEventListener('click', saveExpense);
   $('recalcBtn').addEventListener('click', recalcVatFromTotal);
   bindWarningClearance();
-  $('exportBtn').addEventListener('click', () => { closeDrawer(); exportExcel(); });
-  $('exportZipBtn').addEventListener('click', () => { closeDrawer(); exportZip(); });
-  $('syncPendingBtn').addEventListener('click', () => { closeDrawer(); syncPending(); });
-  $('showDashboardBtn').addEventListener('click', () => { closeDrawer(); scrollToDashboard(); });
-  $('advisorExportBtn').addEventListener('click', () => { closeDrawer(); exportAdvisorPack(); });
+
+  // Exportaciones
+  $('exportBtn').addEventListener('click', exportExcel);
+  $('exportZipBtn').addEventListener('click', exportZip);
+  $('advisorExportBtn').addEventListener('click', exportAdvisorPack);
+
+  // Ajustes / Google
   $('testGoogleBtn').addEventListener('click', testGoogle);
   $('connectGoogleBtn').addEventListener('click', () => { window.location.href = '/api/google-oauth-start'; });
-  $('wipeBtn').addEventListener('click', () => { closeDrawer(); wipeAll(); });
-  document.querySelectorAll('.collapse-toggle').forEach(btn => btn.addEventListener('click', toggleCollapse));
+  $('wipeBtn').addEventListener('click', wipeAll);
+
+  // Cálculo de IVA
   $('base').addEventListener('change', recalcVatFromBase);
   $('ivaTipo').addEventListener('change', () => {
     if ($('total').value) recalcVatFromTotal();
     else recalcVatFromBase();
   });
+
+  // Instalación PWA
   window.addEventListener('beforeinstallprompt', e => { e.preventDefault(); installPrompt = e; $('installBtn').classList.remove('hidden'); });
   $('installBtn').addEventListener('click', async () => {
     if (installPrompt) { installPrompt.prompt(); installPrompt = null; $('installBtn').classList.add('hidden'); }
@@ -124,17 +156,12 @@ function openSourceSheet(){ $('sourceSheet').classList.remove('hidden'); }
 function closeSourceSheet(){ $('sourceSheet').classList.add('hidden'); }
 function chooseSource(inputId){ closeSourceSheet(); $(inputId).click(); }
 
-function toggleCollapse(e){
-  const btn = e.currentTarget;
-  const body = $(btn.dataset.target);
-  const expanded = btn.getAttribute('aria-expanded') === 'true';
-  btn.setAttribute('aria-expanded', String(!expanded));
-  body.classList.toggle('collapsed', expanded);
+function setStatus(msg, type=''){
+  const el = document.body.dataset.view === 'home' ? ($('homeStatus') || $('status')) : $('status');
+  if (!el) return;
+  el.textContent = msg || '';
+  el.className = 'status ' + type;
 }
-
-function openDrawer(){ $('appDrawer').classList.remove('hidden'); $('drawerBackdrop').classList.remove('hidden'); $('menuBtn').setAttribute('aria-expanded','true'); $('appDrawer').setAttribute('aria-hidden','false'); }
-function closeDrawer(){ $('appDrawer').classList.add('hidden'); $('drawerBackdrop').classList.add('hidden'); $('menuBtn').setAttribute('aria-expanded','false'); $('appDrawer').setAttribute('aria-hidden','true'); }
-function setStatus(msg, type=''){ const el=$('status'); el.textContent=msg||''; el.className='status '+type; }
 function fmtBytes(bytes){ if(!bytes) return '0 B'; const units=['B','KB','MB']; let n=bytes,i=0; while(n>1024&&i<units.length-1){n/=1024;i++;} return `${n.toFixed(i?1:0)} ${units[i]}`; }
 
 function showDiag(data, status='info'){
@@ -592,7 +619,6 @@ function renderDashboard(){
   if (topEl) topEl.innerHTML = top.length ? top.map(([k,v]) => `<li><span>${escapeHtml(k)}</span><strong>${v.toFixed(2)} €</strong></li>`).join('') : '<li><span>Sin datos todavía</span><strong>—</strong></li>';
 }
 function setText(id, value){ const el = $(id); if (el) el.textContent = value; }
-function scrollToDashboard(){ const el = $('dashboardSection'); if (el) el.scrollIntoView({ behavior:'smooth', block:'start' }); }
 
 function fillCell(el, r, c){
   if (c === 'Nombre archivo' && localStorage.getItem(IMG_KEY_PREFIX + r.ID)) {

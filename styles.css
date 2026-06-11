@@ -44,3 +44,32 @@ main{padding:16px max(14px,env(safe-area-inset-left)) 18px max(14px,env(safe-are
 .dashboard-list span{color:var(--muted);font-weight:700}.dashboard-list strong{color:var(--navy)}
 @media(max-width:900px){.dashboard-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(max-width:420px){.dashboard-grid{grid-template-columns:1fr}}
+
+/* UX v9 launcher + navegación por vistas */
+.view{display:none}
+.view.active{display:grid;gap:16px}
+.view-title{font-family:Georgia,serif;font-size:clamp(20px,5vw,26px);margin:0;flex:1;min-width:0;text-align:center;color:#fff;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.home-sub{margin:0 0 4px;color:var(--muted);font-size:14px}
+#homeStatus{margin-top:6px}
+
+.launcher{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px;margin-top:8px}
+.tile{display:flex;flex-direction:column;align-items:flex-start;justify-content:center;gap:7px;background:rgba(255,255,255,.96);color:var(--navy);border:1px solid var(--line);border-radius:22px;padding:20px 18px;min-height:118px;box-shadow:0 10px 30px rgba(15,32,52,.08);text-align:left;font-weight:850;transition:transform .12s ease,box-shadow .12s ease}
+.tile:active{transform:scale(.97)}
+.tile-primary{grid-column:1/-1;background:linear-gradient(135deg,var(--green),var(--green2));color:#fff;min-height:138px;border:0;box-shadow:0 14px 34px rgba(31,164,99,.28)}
+.tile-wide{grid-column:1/-1;min-height:auto;flex-direction:row;align-items:center;gap:14px}
+.tile-icon{font-size:30px;line-height:1}
+.tile-primary .tile-icon{font-size:38px}
+.tile-label{font-size:17px;line-height:1.15}
+.tile-primary .tile-label{font-size:23px}
+.tile-hint{font-size:13px;font-weight:650;opacity:.95}
+.tile-wide .tile-icon{font-size:24px}
+
+.action-list{display:grid;gap:10px;margin-top:12px}
+.action-row{display:flex;align-items:center;gap:14px;width:100%;text-align:left;background:#FBFCFE;color:var(--navy);border:1px solid var(--line);border-radius:16px;padding:14px 16px;min-height:auto;font-weight:800}
+.action-row:active{transform:scale(.99)}
+.action-row.danger{background:#FEF2F2;color:var(--danger);border-color:#FECACA}
+.action-icon{font-size:24px;line-height:1;flex-shrink:0}
+.action-text{display:flex;flex-direction:column;gap:2px;min-width:0}
+.action-text strong{font-size:15px}
+.action-text small{font-weight:600;color:var(--muted);font-size:12px;overflow-wrap:anywhere}
+.action-row.danger .action-text small{color:#b91c1c;opacity:.8}
